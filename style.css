@@ -1,0 +1,9 @@
+button{
+	outline: none;
+}
+
+#map{
+	height: 300px;	
+	width:500px;
+	display: inline-block;
+}

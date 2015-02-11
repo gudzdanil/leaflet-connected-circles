@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html ng-app='leaflet'>
+	<head>
+		<title>Test task</title>
+
+		<link rel="stylesheet" type="text/css" href="./bower_components/leaflet/dist/leaflet.css"/>
+		<link rel="stylesheet" type="text/css" href="./bower_components/jqueryui/themes/start/jquery-ui.css"/>
+		<link rel="stylesheet" type="text/css" href="./bower_components/jqueryui/themes/base/dialog.css"/>
+		<link rel="stylesheet" type="text/css" href="./style.css"/>
+
+		<script src='./bower_components/jquery/dist/jquery.min.js'></script>
+		<script src='./bower_components/jqueryui/jquery-ui.js'></script>
+		<script src='./bower_components/jqueryui/ui/minified/dialog.min.js'></script>
+		<script src='./bower_components/leaflet/dist/leaflet.js'></script>
+		<script src='./bower_components/angular/angular.min.js'></script>
+
+	</head>
+	<body ng-controller='mainCtrl as vm'>
+
+		<div id='map'></div>
+
+		<dlg-circle 
+			style='display: none' 
+			opened='vm.dialog.opened' 
+			ok='vm.dialog.okCallback' 
+			cancel='vm.dialog.cancelCallback'
+		/>
+
+		<script src='./app.js'></script>
+
+	</body>
+</html>
