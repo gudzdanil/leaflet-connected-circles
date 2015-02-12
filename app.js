@@ -2,13 +2,24 @@
 	'use strict';
 
 
+	Number.prototype.toBrng = function() { 
+		return (this.toDeg() + 360) % 360;
+	}
+	Number.prototype.toRad = function(){
+		return this * Math.PI / 180;
+	}
+
+	Number.prototype.toDeg = function(){
+		return this * 180 / Math.PI;
+	}
+
 	angular
 		.module('leaflet', [])
 		.constant('EVENTS', {
 			openModal: 'openModal',
 			modalSubmit: 'drawCircle'
 		})
-		.value('darkness', 0.8)
+		.value('darkness', 0.4)
 		.run(moduleRun)
 		.factory('lMapServ', lMapServ)
 		.service('lineServ', lineServ)
@@ -70,7 +81,7 @@
 			lib.circle(coords, radius, {
 				color: color,
 				fillColor: color,
-				fillOpacity: 1
+				fillOpacity: 0.6
 			}).addTo(map);
 
 			circles.push({coords: coords, radius: radius});
@@ -87,70 +98,123 @@
 		function connectLastCircles(){
 			var coordsA, 
 				coordsB, 
-				circAcoords = circles[circles.length-1].coords, 
-				circBcoords = circles[circles.length-2].coords,
-				rad1 = circles[circles.length-1].radius,
-				rad2 = circles[circles.length-2].radius,
-				dist = lineServ.getLineDistance(circAcoords, circBcoords),
-				koef = dist / lineServ.coordsToMeters(circAcoords, circBcoords),
-				cos = lineServ.getCos(circAcoords, circBcoords),
-				sin = lineServ.getSin(circAcoords, circBcoords);
+				circAcoords = circles[circles.length-2].coords, 
+				circBcoords = circles[circles.length-1].coords,
+				rad1 = circles[circles.length-2].radius,
+				rad2 = circles[circles.length-1].radius;
 
-			coordsA = [	circAcoords[0] + dist * koef * cos * rad1,
-						circAcoords[1] + dist * koef * sin * rad1];
-			coordsB = [	circBcoords[0] - dist * koef * cos * rad2,
-						circBcoords[1] - dist * koef * sin * rad2];
-			console.log(circBcoords);
+			var bearing = lineServ.getBearing(circAcoords, circBcoords); 
+
+			coordsA = lineServ.destBearing(circAcoords, bearing, rad1);
+			coordsB = lineServ.destBearing(circBcoords, bearing, -rad2);
+
 			drawLine(coordsA, coordsB);
 
+			printArrow(coordsB, bearing, rad2 / 2);
+
+		}
+
+		function printArrow(endPoint, bearing, length){
+			var leftAngle = (bearing + 180 + 20),
+				rightAngle = (bearing + 180 - 20);
+			console.log(bearing);
+			console.log('l '+leftAngle);
+			console.log('r '+rightAngle);
+			drawLine(endPoint,lineServ.destBearing(endPoint, leftAngle, length));
+			drawLine(endPoint,lineServ.destBearing(endPoint, rightAngle, length));
 		}
 
 	}
 
 	function lineServ(){
-		this.getLineKoefs = function(coordsA, coordsB){
+		var R = 6378.137;
+
+		this.getLineKoefs = getLineKoefs;
+		this.getLineDistance = getLineDistance;
+		this.getCos = getCos;
+		this.getSin = getSin;
+		this.coordsToMeters = coordsToMeters;
+		this.getBearing = getBearing;
+		this.destBearing = destBearing;
+
+		function getLineKoefs (coordsA, coordsB){
 			var k = (coordsB[1] - coordsA[1]) / (coordsB[0] - coordsA[0]);
 			var b = coordsA[1] - k * coordsA[0];
 			return {k: k, b: b};//kx + b
 		};
 
-		this.getLineDistance = function(coordsA, coordsB){
+		function getLineDistance(coordsA, coordsB){
 			var x = coordsA[0] - coordsB[0], y = coordsA[1] - coordsB[1];
 			return Math.sqrt(x * x + y * y);
 		};
 
-		this.getCos = function(coordsA, coordsB){
+		function getCos(coordsA, coordsB){
 			var dist = this.getLineDistance.apply(this, arguments);
 			return (coordsB[0] - coordsA[0]) / dist;
 		};
 
-		this.getSin = function(coordsA, coordsB){
+		function getSin(coordsA, coordsB){
 			var dist = this.getLineDistance.apply(this, arguments);
 			return (coordsB[1] - coordsA[1]) / dist;
 		};
 
-		this.coordsToMeters = function(coordsA, coordsB){  // generally used geo measurement function
+		function coordsToMeters(coordsA, coordsB){  // generally used geo measurement function
 			var lat1 = coordsA[0], lat2 = coordsB[0];
 			var lon1 = coordsA[1], lon2 = coordsB[1];
-			var R = 6378.137; // Radius of earth in KM
-			var dLat = (lat2 - lat1) * Math.PI / 180;
-			var dLon = (lon2 - lon1) * Math.PI / 180;
+			
+			var dLat = (lat2 - lat1).toRad();
+			var dLon = (lon2 - lon1).toRad();
+
 			var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-			Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-			Math.sin(dLon/2) * Math.sin(dLon/2);
+					Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+					Math.sin(dLon/2) * Math.sin(dLon/2);
+
 			var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 			var d = R * c;
-			return d * 1000; // meters
+			return d * 1000; 
 		};
+
+		function getBearing(coordsA, coordsB){
+			var lat1 = coordsA[0], lat2 = coordsB[0], lon1 = coordsA[1], lon2 = coordsB[1];
+			lat1 = lat1.toRad(); lat2 = lat2.toRad();
+			var dLon = (lon2-lon1).toRad();
+			var y = Math.sin(dLon) * Math.cos(lat2);
+			var x = Math.cos(lat1)*Math.sin(lat2) -
+					Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLon);
+
+			return Math.atan2(y, x).toBrng();
+		}
+
+		function destBearing(coords, bearing, dist){
+			
+			var angDist = dist / 1000 / R;
+			bearing = bearing.toRad();
+
+			var lat = coords[0].toRad();
+			var lon = coords[1].toRad();
+
+			var latFinal = Math.asin(Math.sin(lat)*Math.cos(angDist) +
+	                    			Math.cos(lat)*Math.sin(angDist)*Math.cos(bearing) );
+
+			var lonFinal = lon + Math.atan2(Math.sin(bearing)*Math.sin(angDist)*Math.cos(lat),
+	                        Math.cos(angDist)-Math.sin(lat)*Math.sin(latFinal));
+
+			lonFinal = (lonFinal+3*Math.PI) % (2*Math.PI) - Math.PI; // normalise to -180..+180°
+
+			return [latFinal.toDeg(), lonFinal.toDeg()];
+		}
+		
 	}
 
 	//colorGenerator.$inject = [];
 	function colorGenerator(){
+		this.generate = generate;
+
 		function getNum(darkness){
 			return parseInt(Math.random() * 255 * (1-darkness));
 		}
 
-		this.generate = function(darkness){
+		function generate(darkness){
 			var colorObj = {
 				red: getNum(darkness),
 				green: getNum(darkness),
