@@ -15,15 +15,12 @@
 		<script src='./bower_components/angular/angular.min.js'></script>
 
 	</head>
-	<body ng-controller='mainCtrl as vm'>
+	<body ng-controller='MainCtrl as vm'>
 
 		<div id='map'></div>
 
 		<dlg-circle 
 			style='display: none' 
-			opened='vm.dialog.opened' 
-			ok='vm.dialog.okCallback' 
-			cancel='vm.dialog.cancelCallback'
 		/>
 
 		<script src='./app.js'></script>
